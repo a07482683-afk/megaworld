@@ -1,0 +1,9 @@
+{
+  "replace": false,
+  "values": [
+    "megaworld:bounce_pad",
+    "megaworld:speed_pad",
+    "megaworld:checkpoint",
+    "megaworld:computer"
+  ]
+}

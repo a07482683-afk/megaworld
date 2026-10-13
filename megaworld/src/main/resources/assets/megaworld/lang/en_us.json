@@ -1,0 +1,14 @@
+{
+  "itemGroup.megaworld.main": "Mega World",
+  "block.megaworld.bounce_pad": "Bounce Pad",
+  "block.megaworld.speed_pad": "Speed Pad",
+  "block.megaworld.checkpoint": "Parkour Checkpoint",
+  "block.megaworld.checkpoint.saved": "Checkpoint saved!",
+  "item.megaworld.grox_crystal": "Grox Crystal",
+  "item.megaworld.grox_dweller_spawn_egg": "Grox Dweller Spawn Egg",
+  "entity.megaworld.grox_dweller": "Grox Dweller",
+  "entity.megaworld.grox_dweller.greeting": "Welcome to Grox!",
+  "block.megaworld.computer": "Computer",
+  "entity.megaworld.grox_dweller.stay": "I'll wait here.",
+  "entity.megaworld.grox_dweller.free": "Okay, I'll walk around."
+}

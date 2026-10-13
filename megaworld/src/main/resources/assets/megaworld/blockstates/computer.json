@@ -1,0 +1,19 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "megaworld:block/computer"
+    },
+    "facing=east": {
+      "model": "megaworld:block/computer",
+      "y": 90
+    },
+    "facing=south": {
+      "model": "megaworld:block/computer",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "megaworld:block/computer",
+      "y": 270
+    }
+  }
+}
