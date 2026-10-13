@@ -2,7 +2,6 @@ package com.megaworld.entity;
 
 import net.minecraft.entity.EntityType;
 import net.minecraft.entity.LivingEntity;
-import net.minecraft.entity.ai.goal.AvoidEntityGoal;
 import net.minecraft.entity.ai.goal.EscapeDangerGoal;
 import net.minecraft.entity.ai.goal.Goal;
 import net.minecraft.entity.ai.goal.LookAroundGoal;
@@ -31,6 +30,7 @@ import net.minecraft.sound.SoundEvents;
 import net.minecraft.text.Text;
 import net.minecraft.util.ActionResult;
 import net.minecraft.util.Hand;
+import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.World;
 
 import java.util.EnumSet;
@@ -55,7 +55,7 @@ public class GroxDwellerEntity extends PathAwareEntity {
     protected void initGoals() {
         goalSelector.add(0, new SwimGoal(this));
         goalSelector.add(1, new EscapeDangerGoal(this, 1.5D));
-        goalSelector.add(2, new AvoidEntityGoal<>(this, PlayerEntity.class, 12.0F, 0.9D, 1.3D, GroxDwellerEntity::isScary));
+        goalSelector.add(2, new FearWeaponGoal(this));
         goalSelector.add(3, new StayGoal(this));
         goalSelector.add(4, new TemptGoal(this, 1.1D, Ingredient.ofItems(Items.EMERALD), false));
         goalSelector.add(5, new WanderAroundFarGoal(this, 0.8D));
@@ -164,6 +164,63 @@ public class GroxDwellerEntity extends PathAwareEntity {
     public void readCustomDataFromNbt(NbtCompound nbt) {
         super.readCustomDataFromNbt(nbt);
         staying = nbt.getBoolean("Staying");
+    }
+
+    /** Убегает от игрока с оружием в руках. */
+    private static class FearWeaponGoal extends Goal {
+        private final GroxDwellerEntity mob;
+        private PlayerEntity scarer;
+
+        FearWeaponGoal(GroxDwellerEntity mob) {
+            this.mob = mob;
+            setControls(EnumSet.of(Goal.Control.MOVE));
+        }
+
+        @Override
+        public boolean canStart() {
+            PlayerEntity player = mob.getWorld().getClosestPlayer(mob, 12.0D);
+            if (player != null && isScary(player)) {
+                scarer = player;
+                return true;
+            }
+            return false;
+        }
+
+        @Override
+        public boolean shouldContinue() {
+            return scarer != null && scarer.isAlive() && isScary(scarer)
+                    && mob.squaredDistanceTo(scarer) < 18.0D * 18.0D;
+        }
+
+        @Override
+        public void start() {
+            flee();
+        }
+
+        @Override
+        public void tick() {
+            if (mob.getNavigation().isIdle()) {
+                flee();
+            }
+        }
+
+        @Override
+        public void stop() {
+            scarer = null;
+            mob.getNavigation().stop();
+        }
+
+        private void flee() {
+            if (scarer == null) {
+                return;
+            }
+            Vec3d away = mob.getPos().subtract(scarer.getPos());
+            if (away.lengthSquared() < 0.01D) {
+                away = new Vec3d(1.0D, 0.0D, 0.0D);
+            }
+            away = away.normalize().multiply(10.0D).add(mob.getPos());
+            mob.getNavigation().startMovingTo(away.x, away.y, away.z, 1.3D);
+        }
     }
 
     /** Стоит на месте, пока игрок не разрешит ходить. */
