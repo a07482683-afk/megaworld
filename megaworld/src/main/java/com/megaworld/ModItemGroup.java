@@ -17,7 +17,11 @@ public class ModItemGroup {
                         entries.add(ModBlocks.SPEED_PAD);
                         entries.add(ModBlocks.CHECKPOINT);
                         entries.add(ModBlocks.COMPUTER);
+                        entries.add(ModBlocks.ANTI_GRAVITY_BLOCK);
+                        entries.add(ModBlocks.VANISHING_BLOCK);
+                        entries.add(ModBlocks.MAGNET_BLOCK);
                         entries.add(ModItems.GROX_CRYSTAL);
+                        entries.add(ModItems.GROX_COIN);
                         entries.add(ModItems.GROX_DWELLER_SPAWN_EGG);
                     }).build());
 

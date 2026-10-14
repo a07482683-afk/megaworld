@@ -10,5 +10,10 @@
   "entity.megaworld.grox_dweller.greeting": "Welcome to Grox!",
   "block.megaworld.computer": "Computer",
   "entity.megaworld.grox_dweller.stay": "I'll wait here.",
-  "entity.megaworld.grox_dweller.free": "Okay, I'll walk around."
+  "entity.megaworld.grox_dweller.free": "Okay, I'll walk around.",
+  "block.megaworld.anti_gravity_block": "Anti-Gravity Block",
+  "block.megaworld.vanishing_block": "Vanishing Block",
+  "block.megaworld.magnet_block": "Magnet Block",
+  "item.megaworld.grox_coin": "Grox Coin",
+  "message.megaworld.coins_claimed": "You received %s Grox Coins!"
 }

@@ -16,5 +16,6 @@ public class MegaWorld implements ModInitializer {
         ModEntities.init();
         ModItems.init();
         ModItemGroup.init();
+        com.megaworld.tube.TubeNetworking.register();
     }
 }

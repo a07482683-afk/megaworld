@@ -17,6 +17,6 @@ if errorlevel 1 (
   exit /b 1
 )
 echo.
-echo DONE. Your mod: build\libs\megaworld-0.3.0.jar  (NOT the -sources one)
+echo DONE. Your mod: build\libs\megaworld-0.4.0.jar  (NOT the -sources one)
 echo Copy it to your .minecraft\mods folder together with Fabric API.
 pause

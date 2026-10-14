@@ -1,18 +1,17 @@
 package com.megaworld;
 
+import com.megaworld.client.GroxDwellerModel;
 import com.megaworld.entity.GroxDwellerEntity;
 import net.minecraft.client.render.entity.EntityRendererFactory;
 import net.minecraft.client.render.entity.MobEntityRenderer;
-import net.minecraft.client.render.entity.model.EntityModelLayers;
-import net.minecraft.client.render.entity.model.VillagerResemblingModel;
 import net.minecraft.util.Identifier;
 
-/** Пока используется модель и текстура ванильного жителя. Замени на свои. */
-public class GroxDwellerRenderer extends MobEntityRenderer<GroxDwellerEntity, VillagerResemblingModel<GroxDwellerEntity>> {
-    private static final Identifier TEXTURE = new Identifier("textures/entity/villager/villager.png");
+/** Рендерер жителя Грокса: своя модель + своя текстура. */
+public class GroxDwellerRenderer extends MobEntityRenderer<GroxDwellerEntity, GroxDwellerModel> {
+    private static final Identifier TEXTURE = MegaWorld.id("textures/entity/grox_dweller.png");
 
     public GroxDwellerRenderer(EntityRendererFactory.Context ctx) {
-        super(ctx, new VillagerResemblingModel<>(ctx.getPart(EntityModelLayers.VILLAGER)), 0.5F);
+        super(ctx, new GroxDwellerModel(ctx.getPart(GroxDwellerModel.LAYER)), 0.5F);
     }
 
     @Override

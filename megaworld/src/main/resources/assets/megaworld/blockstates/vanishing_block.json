@@ -1,0 +1,10 @@
+{
+  "variants": {
+    "vanishing=false": {
+      "model": "megaworld:block/vanishing_block"
+    },
+    "vanishing=true": {
+      "model": "megaworld:block/vanishing_block_cracked"
+    }
+  }
+}

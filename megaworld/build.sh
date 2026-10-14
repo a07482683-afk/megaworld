@@ -6,4 +6,4 @@ if [ ! -x gradle-8.8/bin/gradle ]; then
   unzip -q gradle.zip && rm gradle.zip
 fi
 ./gradle-8.8/bin/gradle build --no-daemon
-echo "DONE: build/libs/megaworld-0.3.0.jar (not the -sources one)"
+echo "DONE: build/libs/megaworld-0.4.0.jar (not the -sources one)"

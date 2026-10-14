@@ -1,9 +1,13 @@
 package com.megaworld.client;
 
 import com.megaworld.computer.VideoIdeaGenerator;
+import com.megaworld.tube.TubeNetworking;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
+import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
 import net.minecraft.SharedConstants;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
+import net.minecraft.network.PacketByteBuf;
 import net.minecraft.text.OrderedText;
 import net.minecraft.text.Text;
 import org.lwjgl.glfw.GLFW;
@@ -17,7 +21,10 @@ import java.util.Locale;
 import java.util.Random;
 import java.util.Set;
 
-/** Рабочий стол в стиле Windows 11: Пуск, окна, Блокнот, Идеи для видео, Craft Tube, Настройки. */
+/**
+ * Рабочий стол в стиле Windows 11: Пуск, окна, Блокнот, Идеи для видео (генерация и запись),
+ * Craft Tube (лента, свой канал, Grox Coins), Настройки.
+ */
 public class ComputerScreen extends Screen {
     private enum App {
         NOTES("Блокнот", "Блокнот", 0xFFF2C94C, "Б"),
@@ -40,7 +47,7 @@ public class ComputerScreen extends Screen {
 
     private enum TubeView { HOME, CHANNEL, WATCH }
 
-    /** Видео на Craft Tube. Просмотры растут со временем. */
+    /** Видео из общей ленты (просмотры растут со временем). */
     private static final class Video {
         final String title;
         final String channel;
@@ -81,7 +88,12 @@ public class ComputerScreen extends Screen {
     private static VideoIdeaGenerator.Idea idea = null;
     private static boolean dark = true;
 
-    private static final String MY_CHANNEL = "Твой канал";
+    // запись видео: идея -> запись (4 сек) -> готово к выкладке
+    private static final long RECORD_MS = 4000L;
+    private static VideoIdeaGenerator.Idea recordingIdea = null;
+    private static long recordStart = 0L;
+    private static VideoIdeaGenerator.Idea readyVideo = null;
+
     private static final String[] CHANNELS = {"BlockMaster", "PixelRider", "Алмазный Стив", "VillagerLife", "ПаркурПро", "Creeper Daily", "Эндер Шоу"};
     private static final int[] COLORS = {0xFF3A6FD8, 0xFF4CAF50, 0xFFE5484D, 0xFFF2C94C, 0xFF9B59B6, 0xFF1ABC9C};
     private static final String[] COMMENTS = {
@@ -89,7 +101,6 @@ public class ComputerScreen extends Screen {
             "Где взять такие паркур-блоки?", "Не бей жителя, он плачет", "Автору респект", "Монтаж огонь"
     };
     private static final List<Video> FEED = new ArrayList<>();
-    private static final List<Video> MINE = new ArrayList<>();
     private static final Set<String> SUBS = new HashSet<>();
 
     private static final int TB = 22;      // высота панели задач
@@ -112,6 +123,7 @@ public class ComputerScreen extends Screen {
     private boolean playing = false;
     private boolean counted = false;
     private long lastTime = System.currentTimeMillis();
+    private long lastRequest = 0L;
 
     public ComputerScreen() {
         super(Text.literal("Computer"));
@@ -156,11 +168,11 @@ public class ComputerScreen extends Screen {
         return in(mx, my, r[0], r[1], r[2], r[3]);
     }
 
-    /** Две кнопки внутри окна (слот 0 и 1) для генератора идей и настроек. */
+    /** Кнопки внутри окна: Идеи — 3 кнопки (слоты 0..2), Настройки — 2 кнопки. */
     private int[] btn(int slot) {
         if (app == App.IDEAS) {
-            int w = cw() / 2 - 2;
-            return new int[]{cx() + slot * (cw() / 2 + 2), cy() + ch() - 16, w, 16};
+            int w = (cw() - 8) / 3;
+            return new int[]{cx() + slot * (w + 4), cy() + ch() - 16, w, 16};
         }
         return new int[]{cx() + slot * 86, cy() + 12, 80, 16};
     }
@@ -168,14 +180,15 @@ public class ComputerScreen extends Screen {
     // Craft Tube: геометрия
     private int ctTop() { return cy() + 18; }
     private int rowsPerPage() { return Math.max(1, (ch() - 36) / 38); }
-    private int chRowsPerPage() { return Math.max(1, (ch() - 40) / 38); }
+    private int chRowsPerPage() { return Math.max(1, (ch() - 58) / 38); }
     private int playerH() { return Math.max(40, Math.min(100, ch() - 84)); }
     private int[] ctRow(int r) { return new int[]{cx(), ctTop() + r * 38, cw(), 36}; }
-    private int[] ctChRow(int r) { return new int[]{cx(), ctTop() + 22 + r * 38, cw(), 36}; }
+    private int[] ctChRow(int r) { return new int[]{cx(), ctTop() + 40 + r * 38, cw(), 36}; }
     private int[] ctTab(int i) { return new int[]{cx() + cw() - 142 + i * 72, cy(), 70, 14}; }
     private int[] ctPrev() { return new int[]{cx() + cw() - 36, cy() + ch() - 14, 16, 14}; }
     private int[] ctNext() { return new int[]{cx() + cw() - 18, cy() + ch() - 14, 16, 14}; }
     private int[] ctUpload() { return new int[]{cx(), ctTop(), 120, 16}; }
+    private int[] ctClaim() { return new int[]{cx() + 124, ctTop(), 128, 16}; }
     private int[] ctPlayer() { return new int[]{cx(), ctTop(), cw(), playerH()}; }
     private int[] ctWatchBtn(int i) {
         int[] xs = {0, 80, 188};
@@ -203,8 +216,16 @@ public class ComputerScreen extends Screen {
     }
 
     // ---------- отрисовка ----------
+    private static void tickRecording() {
+        if (recordingIdea != null && System.currentTimeMillis() - recordStart >= RECORD_MS) {
+            readyVideo = recordingIdea;
+            recordingIdea = null;
+        }
+    }
+
     @Override
     public void render(DrawContext ctx, int mouseX, int mouseY, float delta) {
+        tickRecording();
         if (dark) {
             ctx.fillGradient(0, 0, width, height, 0xFF0A1633, 0xFF1B4FA8);
         } else {
@@ -346,7 +367,7 @@ public class ComputerScreen extends Screen {
         ctx.drawText(textRenderer, "Идея для видео:", x, y, cSub(), false);
         y += 11;
         if (idea == null) {
-            drawWrapped(ctx, "Нажми «Сгенерировать», чтобы получить идею.", x, y, w, cText());
+            drawWrapped(ctx, "Нажми «Сгенерировать», потом «Записать», затем выложи видео в Craft Tube.", x, y, w, cText());
         } else {
             y = drawWrapped(ctx, idea.title(), x, y, w, cText()) + 4;
             ctx.drawText(textRenderer, "Превью:", x, y, cSub(), false);
@@ -356,9 +377,20 @@ public class ComputerScreen extends Screen {
             y += 11;
             drawWrapped(ctx, idea.hook(), x, y, w, cText());
         }
+
+        int btnY = btn(0)[1];
+        if (recordingIdea != null) {
+            double p = Math.min(1.0, (System.currentTimeMillis() - recordStart) / (double) RECORD_MS);
+            ctx.fill(x, btnY - 8, x + w, btnY - 4, dark ? 0xFF444444 : 0xFFCCCCCC);
+            ctx.fill(x, btnY - 8, x + (int) (w * p), btnY - 4, 0xFFE5272D);
+        } else if (readyVideo != null) {
+            ctx.drawText(textRenderer, textRenderer.trimToWidth("Записано: " + readyVideo.title(), w), x, btnY - 11, cSub(), false);
+        }
+
         boolean copied = System.currentTimeMillis() < copiedUntil;
         drawButton(ctx, btn(0), "Сгенерировать", in(mx, my, btn(0)), true);
-        drawButton(ctx, btn(1), copied ? "Скопировано!" : "Копировать", in(mx, my, btn(1)), false);
+        drawButton(ctx, btn(1), recordingIdea != null ? "Запись..." : "Записать", in(mx, my, btn(1)), false);
+        drawButton(ctx, btn(2), copied ? "Скопировано!" : "Копировать", in(mx, my, btn(2)), false);
     }
 
     private void drawSettings(DrawContext ctx, int mx, int my) {
@@ -367,7 +399,7 @@ public class ComputerScreen extends Screen {
         drawButton(ctx, btn(0), "Тёмная", in(mx, my, btn(0)), dark);
         drawButton(ctx, btn(1), "Светлая", in(mx, my, btn(1)), !dark);
         ctx.drawText(textRenderer, "Mega OS 11 (стиль Windows 11)", x, y + 40, cText(), false);
-        ctx.drawText(textRenderer, "Версия 0.3.0", x, y + 52, cSub(), false);
+        ctx.drawText(textRenderer, "Версия 0.4.0", x, y + 52, cSub(), false);
     }
 
     // ---------- Craft Tube ----------
@@ -407,13 +439,25 @@ public class ComputerScreen extends Screen {
         lastTime = System.currentTimeMillis();
     }
 
-    private void upload() {
-        VideoIdeaGenerator.Idea id = VideoIdeaGenerator.generate(RANDOM);
-        if (MINE.size() >= 30) {
-            MINE.remove(0);
+    // --- обмен с сервером ---
+    private void requestTube() {
+        if (ClientPlayNetworking.canSend(TubeNetworking.REQUEST)) {
+            ClientPlayNetworking.send(TubeNetworking.REQUEST, PacketByteBufs.create());
         }
-        MINE.add(new Video(id.title(), MY_CHANNEL, 60 + RANDOM.nextInt(540),
-                COLORS[RANDOM.nextInt(COLORS.length)], 0, 1.0 + RANDOM.nextDouble() * 5.0));
+    }
+
+    private void sendUpload(String title) {
+        if (ClientPlayNetworking.canSend(TubeNetworking.UPLOAD)) {
+            PacketByteBuf buf = PacketByteBufs.create();
+            buf.writeString(title);
+            ClientPlayNetworking.send(TubeNetworking.UPLOAD, buf);
+        }
+    }
+
+    private void sendClaim() {
+        if (ClientPlayNetworking.canSend(TubeNetworking.CLAIM)) {
+            ClientPlayNetworking.send(TubeNetworking.CLAIM, PacketByteBufs.create());
+        }
     }
 
     private void drawVideoRow(DrawContext ctx, int[] r, Video v, int mx, int my) {
@@ -430,6 +474,16 @@ public class ComputerScreen extends Screen {
         ctx.drawText(textRenderer, textRenderer.trimToWidth(v.title, tw), tx, r[1] + 4, cText(), false);
         ctx.drawText(textRenderer, textRenderer.trimToWidth(v.channel, tw), tx, r[1] + 15, cSub(), false);
         ctx.drawText(textRenderer, textRenderer.trimToWidth(fmtViews(v.views()), tw), tx, r[1] + 25, cSub(), false);
+    }
+
+    private void drawRemoteRow(DrawContext ctx, int[] r, TubeClientState.RemoteVideo v) {
+        ctx.fill(r[0] + 2, r[1] + 3, r[0] + 54, r[1] + 33, COLORS[Math.floorMod(v.title().hashCode(), COLORS.length)]);
+        ctx.drawCenteredTextWithShadow(textRenderer, "Я", r[0] + 28, r[1] + 14, 0xFFFFFFFF);
+        int tx = r[0] + 60;
+        int tw = r[2] - 64;
+        ctx.drawText(textRenderer, textRenderer.trimToWidth(v.title(), tw), tx, r[1] + 4, cText(), false);
+        ctx.drawText(textRenderer, textRenderer.trimToWidth(fmtViews(v.views()), tw), tx, r[1] + 15, cSub(), false);
+        ctx.drawText(textRenderer, textRenderer.trimToWidth(v.likes() + " лайков", tw), tx, r[1] + 25, cSub(), false);
     }
 
     private void drawScene(DrawContext ctx, int x, int y, int w, int h) {
@@ -478,7 +532,7 @@ public class ComputerScreen extends Screen {
         ctx.fill(x, y + 1, x + 14, y + 13, 0xFFE5272D);
         ctx.drawText(textRenderer, ">", x + 5, y + 3, 0xFFFFFFFF, false);
         ctx.drawText(textRenderer, "Craft Tube", x + 18, y + 3, cText(), false);
-        boolean homeActive = tubeView == TubeView.HOME || (tubeView == TubeView.WATCH && backView == TubeView.HOME);
+        boolean homeActive = tubeView == TubeView.HOME || tubeView == TubeView.WATCH;
         drawButton(ctx, ctTab(0), "Главная", in(mx, my, ctTab(0)), homeActive);
         drawButton(ctx, ctTab(1), "Мой канал", in(mx, my, ctTab(1)), !homeActive);
 
@@ -498,24 +552,29 @@ public class ComputerScreen extends Screen {
             String pt = (page + 1) + "/" + pages;
             ctx.drawText(textRenderer, pt, x + w - 40 - textRenderer.getWidth(pt), y + ch() - 11, cSub(), false);
         } else if (tubeView == TubeView.CHANNEL) {
-            long totalViews = 0;
-            for (Video v : MINE) {
-                totalViews += v.views();
+            if (now - lastRequest > 2000L) {
+                requestTube();
+                lastRequest = now;
             }
-            drawButton(ctx, ctUpload(), "Загрузить видео", in(mx, my, ctUpload()), true);
-            ctx.drawText(textRenderer, "Подписчики: " + (totalViews / 40), x + 126, ctTop(), cText(), false);
-            ctx.drawText(textRenderer, "Видео: " + MINE.size() + ", просмотры: " + totalViews, x + 126, ctTop() + 9, cSub(), false);
-            if (MINE.isEmpty()) {
-                drawWrapped(ctx, "У тебя пока нет видео. Нажми «Загрузить видео».", x, ctTop() + 26, w, cSub());
-            } else {
-                int per = chRowsPerPage();
-                for (int r = 0; r < per; r++) {
-                    int idx = MINE.size() - 1 - r;
-                    if (idx < 0) {
-                        break;
-                    }
-                    drawVideoRow(ctx, ctChRow(r), MINE.get(idx), mx, my);
+            List<TubeClientState.RemoteVideo> mine = TubeClientState.videos;
+            long totalViews = 0;
+            long totalLikes = 0;
+            for (TubeClientState.RemoteVideo v : mine) {
+                totalViews += v.views();
+                totalLikes += v.likes();
+            }
+            drawButton(ctx, ctUpload(), "Выложить видео", in(mx, my, ctUpload()), readyVideo != null);
+            drawButton(ctx, ctClaim(), "Забрать монеты: " + TubeClientState.unclaimed, in(mx, my, ctClaim()), TubeClientState.unclaimed > 0);
+            ctx.drawText(textRenderer, textRenderer.trimToWidth("Видео: " + mine.size() + " | Просмотры: " + totalViews + " | Лайки: " + totalLikes, w), x, ctTop() + 20, cText(), false);
+            String ready = readyVideo != null ? readyVideo.title() : "нет (запиши видео в «Идеи»)";
+            ctx.drawText(textRenderer, textRenderer.trimToWidth("К выкладке: " + ready, w), x, ctTop() + 29, cSub(), false);
+            int per = chRowsPerPage();
+            for (int r = 0; r < per; r++) {
+                int idx = mine.size() - 1 - r;
+                if (idx < 0) {
+                    break;
                 }
+                drawRemoteRow(ctx, ctChRow(r), mine.get(idx));
             }
         } else if (current != null) {
             int[] p = ctPlayer();
@@ -534,7 +593,7 @@ public class ComputerScreen extends Screen {
                 String c = "Комментарий: " + COMMENTS[Math.floorMod(current.title.hashCode(), COMMENTS.length)];
                 ctx.drawText(textRenderer, textRenderer.trimToWidth(c, w), x, btnY - 11, cSub(), false);
             }
-            drawButton(ctx, ctWatchBtn(0), current.liked ? "Лайк ✓" : "Лайк", in(mx, my, ctWatchBtn(0)), current.liked);
+            drawButton(ctx, ctWatchBtn(0), current.liked ? "Лайк +" : "Лайк", in(mx, my, ctWatchBtn(0)), current.liked);
             boolean sub = SUBS.contains(current.channel);
             drawButton(ctx, ctWatchBtn(1), sub ? "Вы подписаны" : "Подписаться", in(mx, my, ctWatchBtn(1)), !sub);
             drawButton(ctx, ctWatchBtn(2), "Назад", in(mx, my, ctWatchBtn(2)), false);
@@ -551,6 +610,7 @@ public class ComputerScreen extends Screen {
         if (in(mx, my, ctTab(1))) {
             tubeView = TubeView.CHANNEL;
             playing = false;
+            lastRequest = 0L;
             return;
         }
         if (tubeView == TubeView.HOME) {
@@ -573,15 +633,16 @@ public class ComputerScreen extends Screen {
             }
         } else if (tubeView == TubeView.CHANNEL) {
             if (in(mx, my, ctUpload())) {
-                upload();
+                if (readyVideo != null) {
+                    sendUpload(readyVideo.title());
+                    readyVideo = null;
+                    lastRequest = 0L;
+                }
                 return;
             }
-            int per = chRowsPerPage();
-            for (int r = 0; r < per; r++) {
-                int idx = MINE.size() - 1 - r;
-                if (idx >= 0 && in(mx, my, ctChRow(r))) {
-                    watch(MINE.get(idx), TubeView.CHANNEL);
-                    return;
+            if (in(mx, my, ctClaim())) {
+                if (TubeClientState.unclaimed > 0) {
+                    sendClaim();
                 }
             }
         } else if (current != null) {
@@ -680,7 +741,12 @@ public class ComputerScreen extends Screen {
         if (app == App.IDEAS) {
             if (in(mx, my, btn(0))) {
                 idea = VideoIdeaGenerator.generate(RANDOM);
-            } else if (in(mx, my, btn(1)) && idea != null && client != null) {
+            } else if (in(mx, my, btn(1))) {
+                if (idea != null && recordingIdea == null) {
+                    recordingIdea = idea;
+                    recordStart = System.currentTimeMillis();
+                }
+            } else if (in(mx, my, btn(2)) && idea != null && client != null) {
                 client.keyboard.setClipboard(idea.title() + "\nПревью: " + idea.thumbnail() + "\nНачало: " + idea.hook());
                 copiedUntil = System.currentTimeMillis() + 1500;
             }

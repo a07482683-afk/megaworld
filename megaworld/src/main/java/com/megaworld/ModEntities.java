@@ -13,7 +13,7 @@ public class ModEntities {
     public static final EntityType<GroxDwellerEntity> GROX_DWELLER = Registry.register(
             Registries.ENTITY_TYPE, MegaWorld.id("grox_dweller"),
             FabricEntityTypeBuilder.create(SpawnGroup.CREATURE, GroxDwellerEntity::new)
-                    .dimensions(EntityDimensions.fixed(0.6F, 1.95F)).build());
+                    .dimensions(EntityDimensions.fixed(0.6F, 1.7F)).build());
 
     public static void init() {
         FabricDefaultAttributeRegistry.register(GROX_DWELLER, GroxDwellerEntity.createAttributes());

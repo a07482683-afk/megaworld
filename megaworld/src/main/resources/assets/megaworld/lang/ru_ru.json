@@ -10,5 +10,10 @@
   "entity.megaworld.grox_dweller.greeting": "Добро пожаловать в Грокс!",
   "block.megaworld.computer": "Компьютер",
   "entity.megaworld.grox_dweller.stay": "Хорошо, жду здесь.",
-  "entity.megaworld.grox_dweller.free": "Ладно, пойду гулять."
+  "entity.megaworld.grox_dweller.free": "Ладно, пойду гулять.",
+  "block.megaworld.anti_gravity_block": "Блок невесомости",
+  "block.megaworld.vanishing_block": "Исчезающий блок",
+  "block.megaworld.magnet_block": "Магнитный блок",
+  "item.megaworld.grox_coin": "Монета Грокса",
+  "message.megaworld.coins_claimed": "Получено Grox Coins: %s"
 }

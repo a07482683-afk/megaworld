@@ -4,6 +4,9 @@
     "megaworld:bounce_pad",
     "megaworld:speed_pad",
     "megaworld:checkpoint",
-    "megaworld:computer"
+    "megaworld:computer",
+    "megaworld:anti_gravity_block",
+    "megaworld:vanishing_block",
+    "megaworld:magnet_block"
   ]
 }
