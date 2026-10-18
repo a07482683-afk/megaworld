@@ -1,0 +1,78 @@
+{
+  "parent": "minecraft:block/block",
+  "textures": {
+    "coin": "megaworld:item/grox_coin",
+    "edge": "minecraft:block/gold_block",
+    "particle": "minecraft:block/gold_block"
+  },
+  "elements": [
+    {
+      "from": [
+        3,
+        0,
+        7.2
+      ],
+      "to": [
+        13,
+        10,
+        8.8
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": "#coin"
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": "#coin"
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": "#edge"
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": "#edge"
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": "#edge"
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": "#edge"
+        }
+      }
+    }
+  ]
+}

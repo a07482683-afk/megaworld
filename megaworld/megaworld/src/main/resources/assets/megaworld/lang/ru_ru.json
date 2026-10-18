@@ -1,0 +1,19 @@
+{
+  "itemGroup.megaworld.main": "Mega World",
+  "block.megaworld.bounce_pad": "Батут",
+  "block.megaworld.speed_pad": "Ускоряющая плита",
+  "block.megaworld.checkpoint": "Чекпоинт паркура",
+  "block.megaworld.checkpoint.saved": "Чекпоинт сохранён!",
+  "item.megaworld.grox_crystal": "Кристалл Грокса",
+  "item.megaworld.grox_dweller_spawn_egg": "Яйцо призыва жителя Грокса",
+  "entity.megaworld.grox_dweller": "Житель Грокса",
+  "entity.megaworld.grox_dweller.greeting": "Добро пожаловать в Грокс!",
+  "block.megaworld.computer": "Компьютер",
+  "entity.megaworld.grox_dweller.stay": "Хорошо, жду здесь.",
+  "entity.megaworld.grox_dweller.free": "Ладно, пойду гулять.",
+  "block.megaworld.anti_gravity_block": "Блок невесомости",
+  "block.megaworld.vanishing_block": "Исчезающий блок",
+  "block.megaworld.magnet_block": "Магнитный блок",
+  "item.megaworld.grox_coin": "Монета Грокса",
+  "message.megaworld.coins_claimed": "Получено Grox Coins: %s"
+}
